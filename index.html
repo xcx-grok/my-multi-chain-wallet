@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiChain Wallet - 区块链毕业设计</title>
+    <!-- Tailwind CSS CDN（现代美化核心） -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- ethers.js v5 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+        .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+        .neon { text-shadow: 0 0 15px rgb(165 243 252); }
+        .toast { animation: slideUp 0.4s ease; }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body class="min-h-screen text-white font-sans">
+    <div class="max-w-5xl mx-auto p-6">
+        <!-- 顶部标题栏 -->
+        <div class="flex justify-between items-center mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-cyan-400 rounded-2xl flex items-center justify-center text-3xl">🔗</div>
+                <h1 class="text-3xl font-bold neon">MultiChain Wallet</h1>
+                <span class="text-xs px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full">毕业设计 v2.0</span>
+            </div>
+            <div id="walletHeader" class="hidden items-center gap-3 bg-white/10 px-5 py-2 rounded-2xl">
+                <span id="shortAddress" class="font-mono text-sm"></span>
+                <button onclick="copyAddress()" class="text-cyan-400 hover:text-white transition">📋</button>
+            </div>
+        </div>
+
+        <!-- 主内容 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- 左侧钱包面板 -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="glass border border-white/10 rounded-3xl p-8">
+                    <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                        <span>👛</span> 我的钱包
+                    </h2>
+                    
+                    <div class="mb-6">
+                        <button onclick="generateWallet()" class="w-full py-4 bg-gradient-to-r from-cyan-400 to-purple-500 hover:from-cyan-500 hover:to-purple-600 rounded-2xl font-medium text-lg transition">生成新钱包</button>
+                        <button onclick="importWallet()" class="w-full mt-3 py-4 border border-white/30 hover:bg-white/10 rounded-2xl font-medium transition">导入助记词</button>
+                    </div>
+
+                    <textarea id="mnemonic" class="w-full h-24 bg-black/30 border border-white/10 rounded-2xl p-4 text-sm font-mono resize-none" placeholder="12词助记词会显示在这里"></textarea>
+                    
+                    <!-- 地址与二维码 -->
+                    <div id="walletCard" class="hidden mt-8 bg-black/40 border border-white/10 rounded-3xl p-6 text-center">
+                        <div id="qrcode" class="mx-auto mb-4"></div>
+                        <p class="text-xs text-gray-400 mb-1">钱包地址</p >
+                        <div class="font-mono text-sm break-all bg-white/5 px-4 py-3 rounded-2xl" id="fullAddress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧功能区 -->
+            <div class="lg:col-span-7 space-y-6">
+                <!-- 余额面板 -->
+                <div class="glass border border-white/10 rounded-3xl p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold">多链余额</h2>
+                        <button onclick="queryAllBalances()" class="flex items-center gap-2 text-cyan-400 hover:text-white">
+                            <span>🔄</span> 刷新
+                        </button>
+                    </div>
+                    <div id="balanceGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- JS动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 转账面板 -->
+                <div class="glass border border-white/10 rounded-3xl p-8">
+                    <h2 class="text-xl font-semibold mb-6">发送测试币</h2>
+                    <select id="chainSelect" onchange="switchChain()" class="w-full bg-black/30 border border-white/10 rounded-2xl p-4 text-white">
+                        <option value="sepolia">Ethereum Sepolia (ETH)</option>
+                        <option value="bscTest">BSC Testnet (BNB)</option>
+                        <option value="polygonAmoy">Polygon Amoy (MATIC)</option>
+                    </select>
+                    <input id="toAddress" class="w-full mt-4 bg-black/30 border border-white/10 rounded-2xl p-4" placeholder="接收地址 (0x...)">
+                    <input id="amount" type="number" step="0.001" class="w-full mt-3 bg-black/30 border border-white/10 rounded-2xl p-4" placeholder="转账金额">
+                    <button onclick="sendTransaction()" class="w-full mt-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-2xl font-medium text-lg transition">确认发送</button>
+                </div>
+
+                <!-- 交易历史 -->
+                <div class="glass border border-white/10 rounded-3xl p-8">
+                    <h2 class="text-xl font-semibold mb-4">交易历史</h2>
+                    <div id="txHistory" class="space-y-3 text-sm max-h-64 overflow-y-auto">
+                        <!-- JS动态添加 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 bg-zinc-800 border border-cyan-400 text-white px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-3 toast"></div>
+
+    <script>
+        // ==================== 配置 ====================
+        let currentWallet = null;
+        let providers = {};
+        let txHistory = JSON.parse(localStorage.getItem('txHistory') || '[]');
+
+        const chains = {
+            sepolia: { name: "Ethereum Sepolia", rpc: "https://ethereum-sepolia-rpc.publicnode.com", explorer: "https://sepolia.etherscan.io", icon: "⛓️" },
+            bscTest: { name: "BSC Testnet", rpc: "https://bsc-testnet-rpc.publicnode.com", explorer: "https://testnet.bscscan.com", icon: "🟡" },
+            polygonAmoy: { name: "Polygon Amoy", rpc: "https://rpc-amoy.polygon.technology", explorer: "https://amoy.polygonscan.com", icon: "🔷" }
+        };
+
+        // Tailwind 初始化
+        function initTailwind() {
+            // 已在 head 加载
+        }
+
+        // ==================== Toast 提示 ====================
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = `<span>${msg}</span>`;
+            toast.className = `fixed bottom-6 right-6 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-3 toast ${type === 'success' ? 'bg-emerald-500/90 border border-emerald-400' : 'bg-red-500/90 border border-red-400'}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 4000);
+        }
+
+        // ==================== 钱包操作 ====================
+        async function generateWallet() {
+            const wallet = ethers.Wallet.createRandom();
+            currentWallet = wallet;
+            document.getElementById("mnemonic").value = wallet.mnemonic.phrase;
+            renderWalletUI(wallet.address);
+            queryAllBalances();
+            showToast("新钱包生成成功！");
+        }
+
+        async function importWallet() {
+            const mnemonic = document.getElementById("mnemonic").value.trim();
+            if (!mnemonic) return showToast("请输入助记词", "error");
+            try {
+                const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+                currentWallet = wallet;
+                renderWalletUI(wallet.address);
+                queryAllBalances();
+                showToast("钱包导入成功！");
+            } catch(e) {
+                showToast("助记词无效！", "error");
+            }
+        }
+
+        function renderWalletUI(address) {
+            document.getElementById("walletCard").classList.remove("hidden");
+            document.getElementById("walletHeader").classList.remove("hidden");
+            document.getElementById("fullAddress").textContent = address;
+            document.getElementById("shortAddress").textContent = address.slice(0,6) + "..." + address.slice(-4);
+
+            document.getElementById("qrcode").innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), { text: address, width: 180, height: 180, colorDark: "#ffffff", colorLight: "#1e2937" });
+        }
+
+        function copyAddress() {
+            const addr = document.getElementById("fullAddress").textContent;
+            navigator.clipboard.writeText(addr);
+            showToast("地址已复制到剪贴板！");
+        }
+
+        // ==================== 余额查询（美化版） ====================
+        async function queryAllBalances() {
+            if (!currentWallet) return showToast("请先生成或导入钱包", "error");
+            const grid = document.getElementById("balanceGrid");
+            grid.innerHTML = `<div class="col-span-3 text-center py-8 text-gray-400">查询中...</div>`;
+
+            const promises = Object.keys(chains).map(async key => {
+                if (!providers[key]) providers[key] = new ethers.providers.JsonRpcProvider(chains[key].rpc);
+                const bal = await providers[key].getBalance(currentWallet.address);
+                return { key, name: chains[key].name, icon: chains[key].icon, balance: parseFloat(ethers.utils.formatEther(bal)).toFixed(6) };
+            });
+
+            const results = await Promise.all(promises);
+            grid.innerHTML = "";
+            results.forEach(r => {
+                const div = document.createElement("div");
+                div.className = "glass border border-white/10 rounded-2xl p-5 text-center";
+                div.innerHTML = `
+                    <div class="text-4xl mb-2">${r.icon}</div>
+                    <div class="font-medium">${r.name}</div>
+                    <div class="text-2xl font-bold mt-2 text-cyan-400">${r.balance}</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        // ==================== 转账 ====================
+        async function sendTransaction() {
+            if (!currentWallet) return showToast("请先生成钱包", "error");
+            const chainKey = document.getElementById("chainSelect").value;
+            const to = document.getElementById("toAddress").value.trim();
+            const amount = document.getElementById("amount").value;
+
+            if (!to || !amount) return showToast("请填写完整信息", "error");
+
+            if (!providers[chainKey]) providers[chainKey] = new ethers.providers.JsonRpcProvider(chains[chainKey].rpc);
+            const signer = currentWallet.connect(providers[chainKey]);
+
+            try {
+                const tx = await signer.sendTransaction({
+                    to: to,
+                    value: ethers.utils.parseEther(amount)
+                });
+
+                showToast(`交易已发送！Hash: ${tx.hash.slice(0,10)}...`);
+
+                // 记录历史
+                txHistory.unshift({ hash: tx.hash, chain: chains[chainKey].name, to, amount, time: new Date().toLocaleString() });
+                localStorage.setItem('txHistory', JSON.stringify(txHistory));
+                renderHistory();
+
+                setTimeout(queryAllBalances, 4000);
+            } catch(e) {
+                showToast("发送失败：" + e.message, "error");
+            }
+        }
+
+        function renderHistory() {
+            const container = document.getElementById("txHistory");
+            container.innerHTML = txHistory.length === 0 ? 
+                `<div class="text-center py-8 text-gray-500">暂无交易记录</div>` :
+                txHistory.map(tx => `
+                    <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl">
+                        <div>
+                            <div class="text-xs text-gray-400">${tx.time}</div>
+                            <div class="font-mono text-xs">${tx.hash.slice(0,12)}... → ${tx.to.slice(0,8)}...</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-emerald-400 font-medium">${tx.amount} ${tx.chain.split(' ')[0]}</div>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        // ==================== 初始化 ====================
+        function switchChain() {
+            // 可扩展
+        }
+
+        // 启动
+        initTailwind();
+        renderHistory();
+        console.log("%c🎓 区块链毕业设计 - 多链钱包 v2.0 已启动！", "color:#67e8f9; font-size:16px");
+    </script>
+</body>
+</html>
